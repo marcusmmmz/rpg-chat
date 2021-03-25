@@ -1,4 +1,4 @@
-<script>
+<script lang="ts">
     export let username = "guest"
     export let text = ""
 </script>

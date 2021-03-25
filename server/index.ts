@@ -8,7 +8,7 @@ const io = new Server(server, {
       methods: ["GET", "POST"]
     }
 });
-const PORT = 3000
+const PORT = 5050
 
 let usersConnected = 0
 let userInfo = {}

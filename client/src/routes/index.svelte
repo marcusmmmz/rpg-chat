@@ -1,17 +1,12 @@
-<script lang="typescript">
-	import MessageComponent from "./components/TextMessage.svelte"
+<script lang="ts">
+	import MessageComponent from "$lib/TextMessage.svelte"
 	import { onMount, onDestroy, afterUpdate } from "svelte"
-	import {io} from "socket.io-client"
-
+	import {socket} from "$lib/js/socket"
+	
 	type TextMessage = {
 		text: string
 		username: string
 	}
-
-	const socket = io(
-		import.meta.env.SNOWPACK_PUBLIC_API_URL, {
-		autoConnect:false
-	})
 	
 	let userCount = 0
 	let inputText = ""
@@ -21,6 +16,10 @@
 	onMount(()=>{
 		socket.connect()
 		Notification.requestPermission();
+				
+		window.addEventListener("keypress", (e)=>{
+			if (e.key == "Enter") sendMessage()
+		})
 	})
 
 	afterUpdate(()=>{
@@ -31,6 +30,23 @@
 
 	onDestroy(()=>{
 		socket.disconnect()
+	})
+
+	socket.on("text message", (msg : TextMessage)=>{
+			addMessage(msg.text, msg.username)
+			if (document.visibilityState == "hidden") {
+				new Notification(msg.username, {body:msg.text} );
+			}
+		})
+
+	socket.on("usersConnectedChanged", (connectedUsers)=>{
+		if (userCount > connectedUsers) {
+			addMessage("someone disconnected")
+		} else if (userCount !== connectedUsers) {
+			addMessage("someone connected")
+		}
+		
+		userCount = connectedUsers
 	})
 
 	function addMessage(text: string, username: string = "server") {
@@ -44,27 +60,6 @@
 			inputText = ""
 		}
 	}
-	
-	socket.on("text message", (msg : TextMessage)=>{
-		addMessage(msg.text, msg.username)
-		if (document.visibilityState == "hidden") {
-			new Notification(msg.username, {body:msg.text} );
-		}
-	})
-
-	socket.on("usersConnectedChanged", (connectedUsers)=>{
-		if (userCount > connectedUsers) {
-			addMessage("someone disconnected")
-		} else if (userCount !== connectedUsers) {
-			addMessage("someone connected")
-		}
-		
-		userCount = connectedUsers
-	})
-						
-	window.addEventListener("keypress", (e)=>{
-		if (e.key == "Enter") sendMessage()
-	})
 </script>
 
 <div class="app">

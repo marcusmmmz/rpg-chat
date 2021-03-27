@@ -1,26 +1,31 @@
+import createApp from "express"
 import {createServer} from "http"
 import {Server} from "socket.io";
 
-const server = createServer();
-const io = new Server(server, {
+const app = createApp()
+const http = createServer(app);
+const io = new Server(http, {
     cors: {
       origin: "*",
       methods: ["GET", "POST"]
     }
 });
+
 const PORT = 5050
 
-let usersConnected = 0
-let userInfo = {}
+type User = {
+    username: string
+}
+
+let userInfo : {[key:string]:User} = {}
 
 io.on('connection', (socket) => {
-    usersConnected++
-    console.log(`${usersConnected} users connected!`);
-    io.emit("usersConnectedChanged", usersConnected)
-
     userInfo[socket.id] = {
         username:"guest"
     }
+
+    console.log(`${getUserCount()} users connected!`);
+    socket.broadcast.emit("user connected", socket.id, userInfo[socket.id])
 
     socket.on("text message", (text: string)=>{
         console.log(text)
@@ -32,6 +37,7 @@ io.on('connection', (socket) => {
             if (args[0] == "nick") {
                 args.shift()
                 userInfo[socket.id].username = args.join(" ")
+                socket.broadcast.emit("user info changed", socket.id, userInfo[socket.id])
             }
             
         } else {
@@ -41,14 +47,21 @@ io.on('connection', (socket) => {
         }
     })
 
-    socket.on('disconnect', (e) => {
-        usersConnected--
-        console.log(`${usersConnected} users connected!`);
-        io.emit("usersConnectedChanged", usersConnected)
+    socket.on('disconnect', (reason)=>{
+        socket.broadcast.emit("user disconnected", socket.id)
         delete userInfo[socket.id]
+        console.log(`${getUserCount()} users connected!`);
     });
 });
 
-server.listen(PORT, () => {
+function getUserCount() {
+    return Object.keys(userInfo).length
+}
+
+app.get("/userinfo", (req, res)=>{
+    return res.send(userInfo)
+})
+
+http.listen(PORT, () => {
     console.log(`server listening on port: ${PORT}`)
 })

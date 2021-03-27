@@ -1,14 +1,31 @@
+<script context="module" lang="ts">
+	export async function load({ fetch }) {
+		const url = `${import.meta.env.VITE_API_URL}/userinfo`
+		const res = await fetch(url);
+
+		return {
+			props: {
+				userInfo: await res.json()
+			}
+		};
+	}
+</script>
+
 <script lang="ts">
 	import MessageComponent from "$lib/TextMessage.svelte"
 	import { onMount, onDestroy, afterUpdate } from "svelte"
-	import {socket} from "$lib/js/socket"
+	import { socket } from "$lib/js/socket"
 	
 	type TextMessage = {
 		text: string
 		username: string
 	}
 	
-	let userCount = 0
+	type User = {
+		username: string
+	}
+
+	export let userInfo : {[key:string]:User} = {}
 	let inputText = ""
 	let messages : TextMessage[] = []
 	let messagesElem : Element
@@ -33,23 +50,27 @@
 	})
 
 	socket.on("text message", (msg : TextMessage)=>{
-			addMessage(msg.text, msg.username)
-			if (document.visibilityState == "hidden") {
-				new Notification(msg.username, {body:msg.text} );
-			}
-		})
-
-	socket.on("usersConnectedChanged", (connectedUsers)=>{
-		if (userCount > connectedUsers) {
-			addMessage("someone disconnected")
-		} else if (userCount !== connectedUsers) {
-			addMessage("someone connected")
+		addMessage(msg.text, msg.username)
+		if (document.visibilityState == "hidden") {
+			new Notification(msg.username, {body:msg.text} );
 		}
-		
-		userCount = connectedUsers
 	})
 
-	function addMessage(text: string, username: string = "server") {
+	socket.on("user connected", (id, user: User)=>{
+		addMessage(`${user.username} connected`)
+		userInfo[id] = user
+	})
+
+	socket.on("user info changed", (id, info)=>{
+		userInfo[id] = info
+	})
+
+	socket.on("user disconnected", (id)=>{
+		addMessage(`${userInfo[id].username} disconnected`)
+		delete userInfo[id]; userInfo = userInfo
+	})
+
+	function addMessage(text: string, username = "server") {
 		messages = [...messages, {text, username}]
 	}
 
@@ -63,17 +84,25 @@
 </script>
 
 <div class="app">
-	<h1>Users connected: {userCount}</h1>
+	<div class="chat">
+		<strong>Users connected: {Object.keys(userInfo).length+1}</strong>
 
-	<div bind:this={messagesElem} class="messages">
-		{#each messages as msg}
-			<MessageComponent text={msg.text} username={msg.username} />
-		{/each}
+		<div bind:this={messagesElem} class="messages">
+			{#each messages as msg}
+				<MessageComponent text={msg.text} username={msg.username} />
+			{/each}
+		</div>
+
+		<div class="inputArea">
+			<input bind:value={inputText} type="text" placeholder="Digite aqui. . .">
+			<button on:click|preventDefault={sendMessage}>»</button>
+		</div>
 	</div>
-
-	<div class="inputArea">
-		<input bind:value={inputText} type="text" placeholder="Digite aqui. . .">
-		<button on:click|preventDefault={sendMessage}>»</button>
+	<div class="sidebar">
+		<strong> Online users: </strong>
+		{#each Object.keys(userInfo) as key (key)}
+			<p>{userInfo[key].username}</p>
+		{/each}
 	</div>
 </div>
 
@@ -90,8 +119,21 @@
 		width: 	100vw;
 		background: black;
 		color: rgb(221, 221, 221);
+		display: grid;
+		grid-template-areas: "chat sidebar";
+		grid-template-rows: 1fr;
+		grid-template-columns: 3fr 1fr;
+		gap: 2vmin;
+	}
+
+	.chat {
+		grid-area: chat;
 		display: flex;
 		flex-direction: column;
+	}
+
+	.sidebar {
+		grid-area: sidebar;
 	}
 
 	.inputArea {

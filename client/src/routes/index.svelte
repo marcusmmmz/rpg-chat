@@ -130,10 +130,16 @@
 		grid-area: chat;
 		display: flex;
 		flex-direction: column;
+		flex-grow: 1;
+		overflow-x: auto;
 	}
 
 	.sidebar {
 		grid-area: sidebar;
+	}
+
+	.messages {
+		height: 100%;
 	}
 
 	.inputArea {
@@ -146,10 +152,5 @@
 	}
 	.inputArea button {
 		flex-grow: 0.1;
-	}
-
-	.messages {
-		flex-grow: 1;
-		overflow-x: auto;
 	}
 </style>

@@ -13,7 +13,7 @@
 
 <script lang="ts">
 	import MessageComponent from "$lib/TextMessage.svelte"
-	import { onMount, onDestroy, afterUpdate } from "svelte"
+	import { onMount, onDestroy, afterUpdate, tick } from "svelte"
 	import { socket } from "$lib/js/socket"
 	
 	type TextMessage = {
@@ -42,15 +42,11 @@
 		})
 	})
 
-	afterUpdate(()=>{
-		messagesElem.lastElementChild?.scrollIntoView(
-			{ behavior: "smooth" }
-		);
-	})
-
 	onDestroy(()=>{
 		socket.disconnect()
 	})
+
+	$: [messages] && scrollToLastMessage()
 
 	$: if (inputText.trim() !== "") updateTypingStatus()
 
@@ -101,6 +97,13 @@
 			addMessage(inputText, "you")
 			inputText = ""
 		}
+	}
+
+	async function scrollToLastMessage() {
+		await tick()
+		messagesElem.lastElementChild?.scrollIntoView(
+			{ behavior: "auto" }
+		);
 	}
 </script>
 
@@ -161,6 +164,7 @@
 
 	.messages {
 		height: 100%;
+		overflow-x: auto;
 	}
 
 	.inputArea {

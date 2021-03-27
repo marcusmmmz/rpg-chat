@@ -14,18 +14,25 @@ const io = new Server(http, {
 const PORT = 5050
 
 type User = {
-    username: string
+    username: string,
+    isTyping: boolean
 }
 
 let userInfo : {[key:string]:User} = {}
 
 io.on('connection', (socket) => {
     userInfo[socket.id] = {
-        username:"guest"
+        username:"guest",
+        isTyping:false
     }
 
     console.log(`${getUserCount()} users connected!`);
     socket.broadcast.emit("user connected", socket.id, userInfo[socket.id])
+
+    socket.on("typing status changed", (isTyping)=>{
+        userInfo[socket.id].isTyping = isTyping
+        socket.broadcast.emit("typing status changed", socket.id, isTyping)
+    })
 
     socket.on("text message", (text: string)=>{
         console.log(text)

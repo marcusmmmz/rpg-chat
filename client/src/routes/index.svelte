@@ -22,13 +22,16 @@
 	}
 	
 	type User = {
-		username: string
+		username: string,
+		isTyping: boolean
 	}
 
 	export let userInfo : {[key:string]:User} = {}
 	let inputText = ""
 	let messages : TextMessage[] = []
 	let messagesElem : Element
+	let isTyping = false
+	let typingTimeout : ReturnType<typeof setTimeout>
 
 	onMount(()=>{
 		socket.connect()
@@ -47,6 +50,12 @@
 
 	onDestroy(()=>{
 		socket.disconnect()
+	})
+
+	$: if (inputText.trim() !== "") updateTypingStatus()
+
+	socket.on("typing status changed", (id, isTyping)=>{
+		userInfo[id].isTyping = isTyping
 	})
 
 	socket.on("text message", (msg : TextMessage)=>{
@@ -69,6 +78,18 @@
 		addMessage(`${userInfo[id].username} disconnected`)
 		delete userInfo[id]; userInfo = userInfo
 	})
+
+	function updateTypingStatus() {
+		clearTimeout(typingTimeout)
+		if (!isTyping) {
+			isTyping = true
+			socket.emit("typing status changed", isTyping)
+		}
+		typingTimeout = setTimeout(()=>{
+			isTyping = false
+			socket.emit("typing status changed", isTyping)
+		}, 1000)
+	}
 
 	function addMessage(text: string, username = "server") {
 		messages = [...messages, {text, username}]
@@ -101,7 +122,7 @@
 	<div class="sidebar">
 		<strong> Online users: </strong>
 		{#each Object.keys(userInfo) as key (key)}
-			<p>{userInfo[key].username}</p>
+			<p>{userInfo[key].username}{userInfo[key].isTyping ? ", typing" : ""}</p>
 		{/each}
 	</div>
 </div>
